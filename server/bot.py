@@ -26,7 +26,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from loguru import logger
-from pydantic import BaseModel
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -45,6 +44,9 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.workers.runner import WorkerRunner
+from pydantic import BaseModel
+
+from knowledge_loader import load_motion_falcon_knowledge
 
 load_dotenv(override=True)
 
@@ -134,6 +136,11 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
             detail="Missing API keys. Please save them from the settings page before connecting.",
         )
 
+    knowledge = await load_motion_falcon_knowledge(
+        _get_setting("MOTION_FALCON_KNOWLEDGE_URL"),
+        _get_setting("MOTION_FALCON_KNOWLEDGE_TOKEN"),
+    )
+
     stt = DeepgramSTTService(api_key=deepgram_key)
 
     tts = CartesiaTTSService(
@@ -147,7 +154,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
         api_key=openrouter_key,
         settings=OpenRouterLLMService.Settings(
             model=_get_setting("OPENROUTER_MODEL") or "openai/gpt-4o-mini",
-            system_instruction="You are a helpful assistant in a voice conversation. Your responses will be spoken aloud, so avoid emojis, bullet points, or other formatting that can't be spoken. Respond to what the user said in a creative, helpful, and brief way.",
+            system_instruction=knowledge.system_instruction(),
         ),
     )
 
@@ -186,7 +193,11 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
     async def on_client_connected(transport, client):
         logger.info("Client connected")
         context.add_message(
-            {"role": "developer", "content": "Please introduce yourself to the user."}
+            {
+                "role": "developer",
+                "content": "Introduce yourself as Falcon, Motion Falcon's voice assistant. "
+                "Offer help with Motion Falcon's creative technology services or a project idea.",
+            }
         )
         await worker.queue_frames([LLMRunFrame()])
 

@@ -2,5 +2,10 @@
   "framework": "vite",
   "installCommand": "cd client && npm install",
   "buildCommand": "cd client && npm run build",
-  "outputDirectory": "client/dist"
+  "outputDirectory": "client/dist",
+  "functions": {
+    "api/motion-falcon-knowledge.js": {
+      "includeFiles": "api/knowledge/**"
+    }
+  }
 }

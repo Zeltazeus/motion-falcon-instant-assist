@@ -78,6 +78,29 @@ in the Pipecat Cloud server environment and are never added to Vercel.
 
 Refer to the [Pipecat Cloud Documentation](https://docs.pipecat.ai/deployment/pipecat-cloud/introduction) to learn more about configuring, deploying, and managing your agents in Pipecat Cloud.
 
+## Motion Falcon Knowledge
+
+The Vercel deployment keeps Motion Falcon's assistant content private in its serverless
+function bundle:
+
+- `api/knowledge/motion-falcon-policy.md`
+- `api/knowledge/motion-falcon-public-knowledge.md`
+
+The Vercel endpoint at `/api/motion-falcon-knowledge` requires a bearer token. Configure
+the same high-entropy value as `MOTION_FALCON_KNOWLEDGE_TOKEN` in the Vercel project and
+as a server-only value in `server/.env` for local use and the Pipecat Cloud secret set for
+production:
+
+```text
+MOTION_FALCON_KNOWLEDGE_URL=https://your-vercel-domain/api/motion-falcon-knowledge
+MOTION_FALCON_KNOWLEDGE_TOKEN=replace-with-a-shared-high-entropy-secret
+```
+
+The browser never receives this token or the Markdown documents. The bot downloads the
+combined content once when it starts and keeps it in memory for the session. Deploy Vercel,
+then restart or redeploy the bot after changing either document. Never put private strategy,
+credentials, or client data in `client/public`.
+
 ## Building with an AI coding agent
 
 Extending this bot with Claude Code, Codex, or another AI coding assistant? Give it live, accurate Pipecat context instead of stale training data with the **Pipecat Context Hub** — a local index of Pipecat docs, examples, and API source your agent queries over MCP:
