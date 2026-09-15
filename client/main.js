@@ -84,7 +84,6 @@ async function createTransport() {
       endpoint: offerEndpoint,
       headers: new Headers({
         Authorization: `Bearer ${CLOUD_PUBLIC_KEY}`,
-        "Content-Type": "application/json",
       }),
     },
     iceServers: session.iceConfig?.iceServers || [],
