@@ -1,6 +1,7 @@
 """Tests for Motion Falcon's Vercel knowledge loader."""
 
 import unittest
+from pathlib import Path
 
 from aiohttp import web
 
@@ -56,3 +57,14 @@ class KnowledgeLoaderTest(unittest.IsolatedAsyncioTestCase):
     async def test_rejects_an_invalid_bearer_token(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "HTTP 401"):
             await load_motion_falcon_knowledge(f"{self._base_url}/knowledge", "wrong-token")
+
+
+class MotionFalconPolicyTest(unittest.TestCase):
+    """Validate important behavioral constraints in the approved policy."""
+
+    def test_policy_does_not_refer_visitors_to_alternative_providers(self) -> None:
+        policy_path = Path(__file__).parents[2] / "api" / "knowledge" / "motion-falcon-policy.md"
+        policy = policy_path.read_text(encoding="utf-8")
+
+        self.assertIn("Do not recommend, compare, refer to, or suggest freelancers", policy)
+        self.assertIn("A visitor's budget is useful discovery information", policy)
