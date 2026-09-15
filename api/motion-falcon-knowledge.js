@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
-const knowledgeDirectory = new URL("./knowledge/", import.meta.url);
+const knowledgeDirectory = join(process.cwd(), "api", "knowledge");
 
 async function readKnowledgeFile(name) {
-  return readFile(fileURLToPath(new URL(name, knowledgeDirectory)), "utf8");
+  return readFile(join(knowledgeDirectory, name), "utf8");
 }
 
 export default async function handler(request, response) {
