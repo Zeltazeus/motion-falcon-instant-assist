@@ -63,17 +63,18 @@ This project is configured for deployment to Pipecat Cloud. You can learn how to
 
 ### Connecting the Vercel frontend
 
-The browser client uses `http://localhost:7860/api/offer` only for local
-development. For a Vercel deployment, add this environment variable in the
-Vercel project settings and redeploy:
+The browser client uses `http://localhost:7860/api/offer` for local development.
+For a Vercel deployment, add these environment variables in the Vercel project
+settings and redeploy:
 
 ```text
-VITE_BOT_URL=https://your-public-pipecat-bot-url/api/offer
+VITE_PCC_API_URL=https://api.pipecat.daily.co/v1/public
+VITE_PCC_AGENT_NAME=pipecat-quickstart
+VITE_PCC_PUBLIC_KEY=pk_...
 ```
 
-Use the public HTTPS WebRTC offer URL provided by Pipecat Cloud. Do not use
-`localhost` or an HTTP URL from a Vercel-hosted page. Provider API keys stay in
-the Pipecat Cloud server environment and are never added to Vercel.
+The public key is intended for browser session startup. Provider API keys stay
+in the Pipecat Cloud server environment and are never added to Vercel.
 
 Refer to the [Pipecat Cloud Documentation](https://docs.pipecat.ai/deployment/pipecat-cloud/introduction) to learn more about configuring, deploying, and managing your agents in Pipecat Cloud.
 
