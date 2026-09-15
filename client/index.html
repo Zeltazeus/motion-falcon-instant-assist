@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Motion Falcon Instant Assist</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="brand-header">
+        <a class="brand" href="./" aria-label="Motion Falcon Instant Assist home"><span class="brand-mark"><img src="/motion-falcon-logo.png" alt="" /></span><span class="brand-copy"><strong>Motion Falcon</strong><span>Instant Assist</span></span></a>
+        <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light mode" title="Toggle theme"><span aria-hidden="true" class="theme-icon">&#9788;</span></button>
+      </header>
+      <section class="hero" aria-labelledby="welcome-title">
+        <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span id="session-label">READY WHEN YOU ARE</span></div>
+        <h1 id="welcome-title">What can we move forward?</h1>
+        <p class="hero-copy">Talk naturally. Instant Assist will find the next useful step.</p>
+        <div class="orb-wrap"><div class="orb-halo halo-one" aria-hidden="true"></div><div class="orb-halo halo-two" aria-hidden="true"></div><button id="connect" class="orb orb-idle" type="button" aria-describedby="status"><span class="orb-core"><span class="orb-glyph" aria-hidden="true"></span><span id="orb-label">Start assist</span></span></button></div>
+        <div id="status" class="status" aria-live="polite">Tap to start a private voice session</div>
+      </section>
+      <section class="insights" aria-labelledby="insights-title"><div class="section-heading"><h2 id="insights-title">Live brief</h2><span class="pulse-line" aria-hidden="true"></span></div><div id="insight-grid" class="insight-grid"></div></section>
+      <audio id="bot-audio" autoplay playsinline aria-hidden="true"></audio>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
