@@ -35,10 +35,12 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.processors.frameworks.rtvi.frames import RTVIUICommandFrame
 from pipecat.runner.run import app
 from pipecat.runner.types import RunnerArguments
 from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
+from pipecat.services.llm_service import FunctionCallParams
 from pipecat.services.openrouter.llm import OpenRouterLLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
@@ -47,6 +49,7 @@ from pipecat.workers.runner import WorkerRunner
 from pydantic import BaseModel
 
 from knowledge_loader import load_motion_falcon_knowledge
+from lead_capture import LeadCapture, LeadDelivery
 
 load_dotenv(override=True)
 
@@ -158,7 +161,21 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
         ),
     )
 
-    context = LLMContext()
+    async def open_lead_capture(params: FunctionCallParams) -> dict[str, str]:
+        """Open the consent form after the visitor agrees to share their details."""
+        await params.pipeline_worker.queue_frame(RTVIUICommandFrame(command="open-lead-capture"))
+        return {"status": "The contact form is open."}
+
+    async def open_scheduling(params: FunctionCallParams) -> dict[str, str]:
+        """Open the approved Motion Falcon Calendly booking flow."""
+        await params.pipeline_worker.queue_frame(
+            RTVIUICommandFrame(
+                command="open-scheduling", payload={"url": _get_setting("CALENDLY_URL")}
+            )
+        )
+        return {"status": "The scheduling window is open."}
+
+    context = LLMContext(tools=[open_lead_capture, open_scheduling])
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
@@ -184,6 +201,40 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
         ),
         processor_unusable_policy=ProcessorUnusablePolicy.END,
     )
+
+    lead_delivery = LeadDelivery(
+        hubspot_token=_get_setting("HUBSPOT_PRIVATE_APP_TOKEN"),
+        resend_api_key=_get_setting("RESEND_API_KEY"),
+        email_from=_get_setting("EMAIL_FROM"),
+        calendly_url=_get_setting("CALENDLY_URL"),
+    )
+
+    def transcript_for_hubspot() -> str:
+        messages = []
+        for message in context.get_messages():
+            role = message.get("role")
+            content = message.get("content")
+            if role in {"user", "assistant"} and isinstance(content, str):
+                messages.append(f"{role.title()}: {content}")
+        return "\n".join(messages)
+
+    async def handle_lead_capture(payload: object) -> None:
+        try:
+            lead = LeadCapture.from_payload(payload)
+            transcript = transcript_for_hubspot() if lead.transcript_consent else ""
+            await lead_delivery.deliver(lead, transcript)
+            await worker.queue_frame(
+                RTVIUICommandFrame(
+                    command="open-scheduling", payload={"url": _get_setting("CALENDLY_URL")}
+                )
+            )
+        except (RuntimeError, ValueError) as error:
+            logger.warning(f"Lead capture was not delivered: {error}")
+
+    @worker.rtvi.event_handler("on_ui_message")
+    async def on_ui_message(rtvi, message):
+        if getattr(message.data, "event", None) == "lead.capture":
+            worker.create_task(handle_lead_capture(message.data.payload), "lead_capture")
 
     runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)
 

@@ -122,6 +122,7 @@ h1 { max-width: 540px; margin: 0.9rem auto 0; font-family: Georgia, "Times New R
 .orb-error { border-color: #ff705f; background: radial-gradient(circle at 35% 28%, #ffd2a6 0 4%, transparent 17%), radial-gradient(circle at 66% 70%, rgba(255, 112, 95, 0.8), transparent 38%), radial-gradient(circle at 48% 45%, #4d1e37, #170914 78%); }
 
 .status { min-height: 1.4em; color: var(--muted); font-size: 0.82rem; }
+.text-command { margin-top: 0.8rem; border: 0; border-bottom: 1px solid var(--cyan); background: transparent; color: var(--ink); font: inherit; font-size: 0.76rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .insights { border-top: 1px solid var(--line); padding-top: 1.25rem; }
 .section-heading { gap: 0.75rem; }
 .section-heading h2 { margin: 0; font-size: 0.76rem; letter-spacing: 0.14em; text-transform: uppercase; }
@@ -130,6 +131,26 @@ h1 { max-width: 540px; margin: 0.9rem auto 0; font-family: Georgia, "Times New R
 .insight-card { min-height: 7rem; padding: 1rem; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface-raised) 82%, transparent); box-shadow: 0 0.8rem 2rem var(--shadow); }
 .card-label { color: var(--cyan); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase; }
 .insight-card p { margin: 0.65rem 0 0; color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 0.96rem; line-height: 1.2; }
+
+dialog { color: var(--ink); }
+dialog::backdrop { background: rgba(0, 5, 15, 0.78); backdrop-filter: blur(0.35rem); }
+.lead-dialog, .scheduling-dialog { width: min(calc(100% - 2rem), 32rem); border: 1px solid var(--cyan); border-radius: 0; background: var(--surface-raised); box-shadow: 0 0 0 1px rgba(243, 43, 214, 0.32), 0 2rem 5rem var(--shadow); }
+.lead-dialog { padding: 1.25rem; }
+.dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.9rem; border-bottom: 1px solid var(--line); }
+.dialog-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.5rem; font-weight: 400; }
+.dialog-close { width: 2.25rem; height: 2.25rem; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--ink); font-size: 1.2rem; }
+.lead-form { display: grid; gap: 1rem; padding-top: 1.1rem; }
+.lead-form > label:not(.consent-option) { display: grid; gap: 0.4rem; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.lead-form input[type="text"], .lead-form input[type="email"] { min-height: 2.7rem; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--ink); font: inherit; padding: 0.55rem 0.65rem; }
+.lead-form input:focus { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.consent-option { display: flex; align-items: flex-start; gap: 0.65rem; color: var(--ink); font-size: 0.88rem; }
+.consent-option input { width: 1rem; height: 1rem; accent-color: var(--cyan); }
+.consent-note, .form-status { margin: 0; color: var(--muted); font-size: 0.77rem; }
+.dialog-actions { display: flex; justify-content: flex-end; }
+.form-submit { min-height: 2.7rem; border: 1px solid var(--cyan); border-radius: 0; background: transparent; color: var(--ink); font: inherit; font-weight: 700; padding: 0 1.1rem; }
+.scheduling-dialog { width: min(100%, 68rem); height: min(100%, 52rem); padding: 1rem; }
+.scheduling-dialog iframe { width: 100%; height: calc(100% - 5rem); border: 0; background: #ffffff; }
+.scheduling-dialog .text-command { display: inline-block; color: var(--ink); text-decoration: none; }
 
 @keyframes living-pulse {
   0%, 100% { transform: scale(0.985); box-shadow: 0 0 1.4rem rgba(32, 230, 255, 0.22), 0 0 2.6rem rgba(243, 43, 214, 0.12), 0 1.5rem 4rem var(--shadow); }
@@ -142,6 +163,7 @@ h1 { max-width: 540px; margin: 0.9rem auto 0; font-family: Georgia, "Times New R
 @keyframes halo-pulse-two { 0%, 100% { transform: scale(0.96) rotate(-2deg); opacity: 0.42; } 50% { transform: scale(1.08) rotate(2deg); opacity: 0.9; } }
 
 @media (min-width: 640px) { .insight-grid { grid-template-columns: repeat(4, 1fr); } .insight-card { min-height: 10rem; } }
+@media (max-width: 640px) { .scheduling-dialog { width: 100vw; max-width: none; height: 100dvh; max-height: none; border: 0; } }
 @media (max-width: 360px) { .app-shell { padding-right: 0.85rem; padding-left: 0.85rem; } .hero { padding-top: 2rem; } .orb-wrap { width: 64vw; } .insight-card { padding: 0.8rem; } .insight-card p { font-size: 0.88rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
 #bot-audio { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }

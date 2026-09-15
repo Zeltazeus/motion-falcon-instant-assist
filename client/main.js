@@ -13,6 +13,13 @@ const sessionLabel = document.getElementById("session-label");
 const themeToggle = document.getElementById("theme-toggle");
 const themeIcon = themeToggle.querySelector(".theme-icon");
 const insightGrid = document.getElementById("insight-grid");
+const leadCaptureDialog = document.getElementById("lead-capture-dialog");
+const schedulingDialog = document.getElementById("scheduling-dialog");
+const leadCaptureForm = document.getElementById("lead-capture-form");
+const leadCaptureStatus = document.getElementById("lead-capture-status");
+const calendlyFrame = document.getElementById("calendly-frame");
+const calendlyFallback = document.getElementById("calendly-fallback");
+const openLeadCaptureButton = document.getElementById("open-lead-capture");
 
 const approvedBriefs = [
   { label: "Current intent", snippets: ["Ready to turn a question into a clear next move.", "Listening for the outcome that matters most right now."] },
@@ -24,6 +31,25 @@ const approvedBriefs = [
 let client;
 let orbState = "idle";
 let briefIndex = 0;
+let dialogTrigger;
+
+function openDialog(dialog, trigger) {
+  dialogTrigger = trigger || document.activeElement;
+  if (!dialog.open) dialog.showModal();
+}
+
+function closeDialog(dialog) {
+  if (dialog.open) dialog.close();
+  dialogTrigger?.focus();
+}
+
+function openScheduling(payload) {
+  const calendlyUrl = payload?.url;
+  if (typeof calendlyUrl !== "string" || !/^https:\/\/(?:[^/]+\.)?calendly\.com\//.test(calendlyUrl)) return;
+  calendlyFrame.src = calendlyUrl;
+  calendlyFallback.href = calendlyUrl;
+  openDialog(schedulingDialog);
+}
 
 function renderBrief() {
   insightGrid.replaceChildren(...approvedBriefs.map((brief) => {
@@ -133,6 +159,10 @@ async function connect() {
     client.on(RTVIEvent.BotStartedSpeaking, () => setStatus("Instant Assist is speaking.", "speaking"));
     client.on(RTVIEvent.BotStoppedSpeaking, () => setStatus("Connected. I am listening.", "connected"));
     client.on(RTVIEvent.UserStartedSpeaking, () => setStatus("I am listening.", "connected"));
+    client.on(RTVIEvent.UICommand, ({ command, payload }) => {
+      if (command === "open-lead-capture") openDialog(leadCaptureDialog);
+      if (command === "open-scheduling") openScheduling(payload);
+    });
 
     client.on(RTVIEvent.Disconnected, () => {
       setStatus("Tap to start a private voice session", "idle");
@@ -184,6 +214,43 @@ connectButton.addEventListener("click", async () => {
 
 themeToggle.addEventListener("click", () => {
   setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+openLeadCaptureButton.addEventListener("click", () => openDialog(leadCaptureDialog, openLeadCaptureButton));
+document.querySelectorAll("[data-close-dialog]").forEach((button) => {
+  button.addEventListener("click", () => closeDialog(document.getElementById(button.dataset.closeDialog)));
+});
+
+[leadCaptureDialog, schedulingDialog].forEach((dialog) => {
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) closeDialog(dialog);
+  });
+  dialog.addEventListener("close", () => {
+    if (dialog === schedulingDialog) calendlyFrame.removeAttribute("src");
+  });
+});
+
+leadCaptureForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const formData = new FormData(leadCaptureForm);
+  const recapConsent = formData.has("recap");
+  const transcriptConsent = formData.has("transcript");
+  if (!recapConsent && !transcriptConsent) {
+    leadCaptureStatus.textContent = "Choose at least one sharing option.";
+    return;
+  }
+  if (!client) {
+    leadCaptureStatus.textContent = "Start a voice session before sharing your enquiry.";
+    return;
+  }
+  client.sendUIEvent("lead.capture", {
+    name: formData.get("name"),
+    email: formData.get("email"),
+    recapConsent,
+    transcriptConsent,
+  });
+  leadCaptureStatus.textContent = "Details shared. Opening scheduling.";
+  leadCaptureForm.reset();
 });
 
 renderBrief();

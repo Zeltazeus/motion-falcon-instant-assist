@@ -18,3 +18,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy the application code
 COPY ./bot.py bot.py
 COPY ./knowledge_loader.py knowledge_loader.py
+COPY ./lead_capture.py lead_capture.py

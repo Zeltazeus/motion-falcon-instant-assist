@@ -19,7 +19,25 @@
         <p class="hero-tagline">We Build. We Train. We Deploy.</p>
         <div class="orb-wrap"><div class="orb-halo halo-one" aria-hidden="true"></div><div class="orb-halo halo-two" aria-hidden="true"></div><button id="connect" class="orb orb-idle" type="button" aria-describedby="status"><span class="orb-core"><span class="orb-glyph" aria-hidden="true"></span><span id="orb-label">Start assist</span></span></button></div>
         <div id="status" class="status" aria-live="polite">Tap to start a private voice session</div>
+        <button id="open-lead-capture" class="text-command" type="button">Project enquiry</button>
       </section>
+      <dialog id="lead-capture-dialog" class="lead-dialog" aria-labelledby="lead-capture-title">
+        <div class="dialog-heading"><h2 id="lead-capture-title">Project enquiry</h2><button class="dialog-close" type="button" data-close-dialog="lead-capture-dialog" aria-label="Close project enquiry">x</button></div>
+        <form id="lead-capture-form" class="lead-form">
+          <label>Name<input id="lead-name" name="name" type="text" autocomplete="name" required /></label>
+          <label>Email<input id="lead-email" name="email" type="email" autocomplete="email" required /></label>
+          <label class="consent-option"><input id="consent-recap" name="recap" type="checkbox" /> <span>Send me a project recap.</span></label>
+          <label class="consent-option"><input id="consent-transcript" name="transcript" type="checkbox" /> <span>Store this conversation transcript in HubSpot. Optional.</span></label>
+          <p class="consent-note">Choose at least one option to share your details.</p>
+          <div class="dialog-actions"><button type="submit" class="form-submit">Continue</button></div>
+        </form>
+        <p id="lead-capture-status" class="form-status" aria-live="polite"></p>
+      </dialog>
+      <dialog id="scheduling-dialog" class="scheduling-dialog" aria-labelledby="scheduling-title">
+        <div class="dialog-heading"><h2 id="scheduling-title">Choose a time</h2><button class="dialog-close" type="button" data-close-dialog="scheduling-dialog" aria-label="Close scheduling">x</button></div>
+        <iframe id="calendly-frame" title="Motion Falcon scheduling" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+        <a id="calendly-fallback" class="text-command" target="_blank" rel="noopener">Open scheduling in a new tab</a>
+      </dialog>
       <section class="insights" aria-labelledby="insights-title"><div class="section-heading"><h2 id="insights-title">Live brief</h2><span class="pulse-line" aria-hidden="true"></span></div><div id="insight-grid" class="insight-grid"></div></section>
       <audio id="bot-audio" autoplay playsinline aria-hidden="true"></audio>
     </main>
