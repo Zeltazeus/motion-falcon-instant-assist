@@ -224,3 +224,5 @@ __marimo__/
 *.debug.log
 
 # Node.js (client/)
+.vercel
+.env*.local
