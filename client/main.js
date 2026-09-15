@@ -1,7 +1,7 @@
 import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { SmallWebRTCTransport } from "@pipecat-ai/small-webrtc-transport";
 
-const BOT_URL = "http://localhost:7860/api/offer";
+const BOT_URL = import.meta.env.VITE_BOT_URL || "http://localhost:7860/api/offer";
 const connectButton = document.getElementById("connect");
 const status = document.getElementById("status");
 const botAudio = document.getElementById("bot-audio");
