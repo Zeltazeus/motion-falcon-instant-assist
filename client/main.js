@@ -91,6 +91,19 @@ async function createTransport() {
   });
 }
 
+async function ensureMicrophonePermission() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Microphone access is not supported by this browser");
+  }
+
+  if (navigator.permissions?.query) {
+    const permission = await navigator.permissions.query({ name: "microphone" });
+    if (permission.state === "denied") {
+      throw new Error("Microphone access is blocked for this site. Allow it in browser settings, then reload.");
+    }
+  }
+}
+
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   themeToggle.setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} mode`);
@@ -103,6 +116,7 @@ async function connect() {
   setStatus("Connecting to Instant Assist...", "connecting");
 
   try {
+    await ensureMicrophonePermission();
     const transport = CLOUD_PUBLIC_KEY
       ? await createTransport()
       : new SmallWebRTCTransport({ webrtcUrl: LOCAL_BOT_URL });
@@ -140,7 +154,7 @@ async function connect() {
     setStatus("Connected");
   } catch (error) {
     console.error("Connection failed:", error);
-    setStatus("Could not open the voice line. Try again.", "error");
+    setStatus(error.message || "Could not open the voice line. Try again.", "error");
     teardownUI();
     connectButton.disabled = false;
   }
