@@ -6,36 +6,189 @@ const CLOUD_API_URL = import.meta.env.VITE_PCC_API_URL || "https://api.pipecat.d
 const CLOUD_AGENT_NAME = import.meta.env.VITE_PCC_AGENT_NAME || "pipecat-quickstart";
 const CLOUD_PUBLIC_KEY = import.meta.env.VITE_PCC_PUBLIC_KEY;
 const connectButton = document.getElementById("connect");
+const studioBoard = document.querySelector(".studio-board");
+const signalCanvas = document.getElementById("signal-field");
+const liveNotesList = document.getElementById("live-notes-list");
 const status = document.getElementById("status");
 const botAudio = document.getElementById("bot-audio");
-const orbLabel = document.getElementById("orb-label");
 const sessionLabel = document.getElementById("session-label");
 const themeToggle = document.getElementById("theme-toggle");
 const themeIcon = themeToggle.querySelector(".theme-icon");
-const insightGrid = document.getElementById("insight-grid");
 const leadCaptureDialog = document.getElementById("lead-capture-dialog");
 const schedulingDialog = document.getElementById("scheduling-dialog");
 const leadCaptureForm = document.getElementById("lead-capture-form");
 const leadCaptureStatus = document.getElementById("lead-capture-status");
-const emailCapturedState = document.getElementById("email-captured-state");
 const meetingScheduledState = document.getElementById("meeting-scheduled-state");
-const emailCapturedIndicator = document.getElementById("email-captured-indicator");
 const meetingScheduledIndicator = document.getElementById("meeting-scheduled-indicator");
-const calendlyFrame = document.getElementById("calendly-frame");
+const calendlyEmbed = document.getElementById("calendly-embed");
 const calendlyFallback = document.getElementById("calendly-fallback");
+const schedulingStatus = document.getElementById("scheduling-status");
 const openLeadCaptureButton = document.getElementById("open-lead-capture");
 
-const approvedBriefs = [
-  { label: "Current intent", snippets: ["Ready to turn a question into a clear next move.", "Listening for the outcome that matters most right now."] },
-  { label: "Relevant capability", snippets: ["I can help shape ideas, decisions, and action plans in real time.", "Bring the rough version. We can make it useful together."] },
-  { label: "Recommended next step", snippets: ["Start with the part that feels most stuck.", "Name the decision, deadline, or detail you want to move."] },
-  { label: "Commercial lens", snippets: ["Keep the signal high: clarity, speed, and a practical result.", "Good momentum is a business advantage. Let us protect it."] },
-];
-
 let client;
+
 let orbState = "idle";
-let briefIndex = 0;
 let dialogTrigger;
+let calendlyWidgetPromise;
+let signalIntensity = 0.32;
+let redrawSignalField = () => {};
+
+function setupSignalField() {
+  const context = signalCanvas?.getContext("2d");
+  if (!studioBoard || !signalCanvas || !context) return;
+
+
+function renderLiveNotes(payload) {
+  if (!liveNotesList) return;
+
+  const notes = (Array.isArray(payload?.notes) ? payload.notes : [])
+    .filter((note) => typeof note === "string")
+    .map((note) => note.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  const rows = notes.length ? notes : ["Listening for conversation details..."];
+  const items = rows.map((note) => {
+    const item = document.createElement("li");
+    item.textContent = note;
+    item.title = note;
+    return item;
+  });
+
+  if (!notes.length) items[0].classList.add("is-placeholder");
+  liveNotesList.replaceChildren(...items);
+}
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const palette = [
+    { line: "rgba(255, 177, 96, 0.46)", fill: "rgba(255, 151, 82, 0.055)" },
+    { line: "rgba(255, 111, 112, 0.38)", fill: "rgba(255, 111, 112, 0.045)" },
+    { line: "rgba(48, 221, 242, 0.42)", fill: "rgba(32, 207, 238, 0.045)" },
+    { line: "rgba(238, 83, 210, 0.40)", fill: "rgba(238, 83, 210, 0.045)" },
+    { line: "rgba(164, 132, 255, 0.35)", fill: "rgba(164, 132, 255, 0.04)" },
+  ];
+  const offsets = [-42, -21, 0, 21, 42];
+  let width = 0;
+  let height = 0;
+  let focusX = 0;
+  let focusY = 0;
+  let frameId;
+
+  function envelopeAt(x) {
+    const distance = (x - focusX) / Math.max(width * 0.34, 1);
+    return 0.16 + 0.84 * Math.exp(-distance * distance);
+  }
+
+  function waveY(x, index, phase) {
+    const envelope = envelopeAt(x);
+    const progress = x / Math.max(width, 1);
+    const amplitude = (13 + 8 * Math.sin(progress * Math.PI)) * envelope;
+    const ripple = Math.sin(progress * Math.PI * 12 + phase + index * 0.78)
+      + 0.2 * Math.sin(progress * Math.PI * 25 - phase * 0.62 + index);
+    return focusY + offsets[index] * envelope + ripple * amplitude;
+  }
+
+  function draw(timestamp = 0) {
+    context.clearRect(0, 0, width, height);
+    if (!width || !height) return;
+
+    const phase = reducedMotion.matches ? 0 : timestamp * (0.00008 + signalIntensity * 0.00018);
+    const glow = context.createRadialGradient(focusX, focusY, 0, focusX, focusY, Math.max(width * 0.48, 1));
+    glow.addColorStop(0, "rgba(255, 142, 103, 0.12)");
+    glow.addColorStop(0.42, "rgba(32, 178, 219, 0.045)");
+    glow.addColorStop(1, "rgba(32, 178, 219, 0)");
+    context.fillStyle = glow;
+    context.fillRect(0, 0, width, height);
+
+    const step = Math.max(3, width / 440);
+    palette.forEach((color, index) => {
+      const thickness = 3 + index % 2;
+      context.beginPath();
+      for (let x = 0; x <= width; x += step) {
+        const y = waveY(x, index, phase);
+        if (x === 0) context.moveTo(x, y - thickness);
+        else context.lineTo(x, y - thickness);
+      }
+      for (let x = width; x >= 0; x -= step) {
+        context.lineTo(x, waveY(x, index, phase) + thickness);
+      }
+      context.closePath();
+      context.globalAlpha = 0.55 + signalIntensity * 0.3;
+      context.fillStyle = color.fill;
+      context.fill();
+      context.globalAlpha = 0.72;
+      context.strokeStyle = color.line;
+      context.lineWidth = 1;
+      context.stroke();
+    });
+
+    const tickStep = Math.max(13, Math.min(22, width / 62));
+    for (let x = 0, index = 0; x <= width; x += tickStep, index += 1) {
+      const envelope = envelopeAt(x);
+      const center = waveY(x, 2, phase);
+      const tickHeight = 3 + envelope * (5 + signalIntensity * 13);
+      context.globalAlpha = 0.12 + envelope * (0.12 + signalIntensity * 0.2);
+      context.strokeStyle = palette[index % palette.length].line;
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(x, center - tickHeight);
+      context.lineTo(x, center + tickHeight);
+      context.stroke();
+    }
+
+    for (let index = 0; index < 5; index += 1) {
+      const progress = (timestamp * (0.000018 + signalIntensity * 0.00003) + index * 0.23) % 1;
+      const x = progress * width;
+      const envelope = envelopeAt(x);
+      context.globalAlpha = 0.3 + envelope * 0.65;
+      context.fillStyle = palette[index].line;
+      context.shadowColor = palette[index].line;
+      context.shadowBlur = 8 + signalIntensity * 8;
+      context.beginPath();
+      context.arc(x, waveY(x, index, phase), 1.5 + signalIntensity, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.globalAlpha = 1;
+    context.shadowBlur = 0;
+  }
+
+  function animate(timestamp) {
+    frameId = undefined;
+    if (document.hidden || reducedMotion.matches) return;
+    draw(timestamp);
+    frameId = window.requestAnimationFrame(animate);
+  }
+
+  function updateMotion() {
+    if (document.hidden || reducedMotion.matches) {
+      if (frameId !== undefined) window.cancelAnimationFrame(frameId);
+      frameId = undefined;
+      draw(0);
+    } else if (frameId === undefined) {
+      frameId = window.requestAnimationFrame(animate);
+    }
+  }
+
+  function resize() {
+    const boardRect = studioBoard.getBoundingClientRect();
+    width = boardRect.width;
+    height = boardRect.height;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5, 2200 / Math.max(width, 1), 1400 / Math.max(height, 1));
+    signalCanvas.width = Math.round(width * pixelRatio);
+    signalCanvas.height = Math.round(height * pixelRatio);
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    const orbRect = document.querySelector(".orb-wrap")?.getBoundingClientRect();
+    focusX = orbRect ? orbRect.left + orbRect.width / 2 - boardRect.left : width / 2;
+    focusY = orbRect ? orbRect.top + orbRect.height / 2 - boardRect.top : height / 2;
+    draw(0);
+    updateMotion();
+  }
+
+  redrawSignalField = () => draw(reducedMotion.matches ? 0 : performance.now());
+  document.addEventListener("visibilitychange", updateMotion);
+  reducedMotion.addEventListener("change", updateMotion);
+  if ("ResizeObserver" in window) new ResizeObserver(resize).observe(studioBoard);
+  else window.addEventListener("resize", resize);
+  resize();
+}
 
 function openDialog(dialog, trigger) {
   dialogTrigger = trigger || document.activeElement;
@@ -53,28 +206,66 @@ function confirmMilestone(indicator, state, message) {
   state.textContent = message;
 }
 
-function openScheduling(payload) {
-  const calendlyUrl = payload?.url;
-  if (typeof calendlyUrl !== "string" || !/^https:\/\/(?:[^/]+\.)?calendly\.com\//.test(calendlyUrl)) return;
-  calendlyFrame.src = calendlyUrl;
-  calendlyFallback.href = calendlyUrl;
-  openDialog(schedulingDialog);
+function loadCalendlyWidget() {
+  if (window.Calendly?.initInlineWidget) return Promise.resolve();
+  if (calendlyWidgetPromise) return calendlyWidgetPromise;
+
+  calendlyWidgetPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://assets.calendly.com/assets/external/widget.js";
+    script.async = true;
+    script.addEventListener("load", resolve, { once: true });
+    script.addEventListener("error", () => {
+      calendlyWidgetPromise = undefined;
+      reject(new Error("Calendly failed to load."));
+    }, { once: true });
+    document.head.append(script);
+  });
+
+  return calendlyWidgetPromise;
 }
 
-function renderBrief() {
-  insightGrid.replaceChildren(...approvedBriefs.map((brief) => {
-    const card = document.createElement("article");
-    card.className = "insight-card";
-    card.innerHTML = `<span class="card-label">${brief.label}</span><p>${brief.snippets[briefIndex % brief.snippets.length]}</p>`;
-    return card;
-  }));
+async function openScheduling(payload) {
+  let bookingUrl;
+  try {
+    bookingUrl = new URL(payload?.url);
+  } catch {
+    return;
+  }
+  if (bookingUrl.protocol !== "https:" || !/^(?:[^.]+\.)*calendly\.com$/i.test(bookingUrl.hostname)) return;
+
+  const name = typeof payload?.name === "string" ? payload.name.trim() : "";
+  const email = typeof payload?.email === "string" ? payload.email.trim() : "";
+  if (name) bookingUrl.searchParams.set("name", name);
+  if (email) bookingUrl.searchParams.set("email", email);
+
+  calendlyFallback.href = bookingUrl.href;
+  calendlyEmbed.replaceChildren();
+  schedulingStatus.textContent = "Loading available times...";
+  openDialog(schedulingDialog);
+
+  try {
+    await loadCalendlyWidget();
+    if (!schedulingDialog.open) return;
+    window.Calendly.initInlineWidget({
+      url: bookingUrl.href,
+      parentElement: calendlyEmbed,
+      resize: true,
+    });
+    schedulingStatus.textContent = "";
+  } catch {
+    schedulingStatus.textContent = "Calendly could not load. Use the link below to book.";
+  }
 }
 
 function setStatus(message, state = orbState) {
   orbState = state;
+  studioBoard.dataset.signalState = state;
+  signalIntensity = state === "speaking" ? 1 : state === "connecting" ? 0.9 : state === "connected" ? 0.72 : state === "error" ? 0.25 : 0.32;
+  redrawSignalField();
   status.textContent = message;
   connectButton.className = `orb orb-${state}`;
-  orbLabel.textContent = state === "idle" || state === "error" ? "Talk to us" : "End session";
+  connectButton.setAttribute("aria-label", state === "idle" || state === "error" ? "Talk to us" : "End session");
   sessionLabel.textContent = state === "idle" ? "READY WHEN YOU ARE" : state === "connecting" ? "OPENING A SECURE LINE" : state === "speaking" ? "FALCON IS RESPONDING" : "LISTENING LIVE";
 }
 
@@ -170,23 +361,29 @@ async function connect() {
     client.on(RTVIEvent.BotStoppedSpeaking, () => setStatus("Connected. I am listening.", "connected"));
     client.on(RTVIEvent.UserStartedSpeaking, () => setStatus("I am listening.", "connected"));
     client.on(RTVIEvent.UICommand, ({ command, payload }) => {
+      if (command === "update-live-notes") renderLiveNotes(payload);
       if (command === "open-lead-capture") openDialog(leadCaptureDialog);
       if (command === "open-scheduling") openScheduling(payload);
       if (command === "lead-capture-confirmed") {
-        confirmMilestone(emailCapturedIndicator, emailCapturedState, "Details received");
         openLeadCaptureButton.classList.add("is-confirmed");
         leadCaptureStatus.textContent = "Your details were received. Opening scheduling.";
         leadCaptureForm.reset();
         leadCaptureForm.querySelector('button[type="submit"]').disabled = false;
+        closeDialog(leadCaptureDialog);
       }
       if (command === "lead-capture-failed") {
-        leadCaptureStatus.textContent = "We couldn't save your details. Please try again.";
+        const failedDestinations = Array.isArray(payload?.failedDestinations)
+          ? payload.failedDestinations.filter((destination) => ["HubSpot", "Resend", "Transcript email"].includes(destination))
+          : [];
+        leadCaptureStatus.textContent = failedDestinations.length
+          ? `Sharing did not complete with ${failedDestinations.join(" and ")}. Check the selected options before retrying.`
+          : "We couldn't save your details. Please try again.";
         leadCaptureForm.querySelector('button[type="submit"]').disabled = false;
       }
     });
 
     client.on(RTVIEvent.Disconnected, () => {
-      setStatus("Start a voice conversation about your project", "idle");
+      setStatus("", "idle");
       connectButton.textContent = "Connect";
       connectButton.disabled = false;
       teardownUI();
@@ -220,7 +417,7 @@ async function disconnect() {
     connectButton.textContent = "Connect";
     connectButton.disabled = false;
     teardownUI();
-    setStatus("Start a voice conversation about your project", "idle");
+    setStatus("", "idle");
   }
 }
 
@@ -237,6 +434,7 @@ window.addEventListener("message", (event) => {
   if (event.origin !== "https://calendly.com") return;
   if (event.data?.event !== "calendly.event_scheduled") return;
   confirmMilestone(meetingScheduledIndicator, meetingScheduledState, "Booking confirmed");
+  closeDialog(schedulingDialog);
 });
 
 themeToggle.addEventListener("click", () => {
@@ -253,7 +451,10 @@ document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     if (event.target === dialog) closeDialog(dialog);
   });
   dialog.addEventListener("close", () => {
-    if (dialog === schedulingDialog) calendlyFrame.removeAttribute("src");
+    if (dialog === schedulingDialog) {
+      calendlyEmbed.replaceChildren();
+      schedulingStatus.textContent = "";
+    }
   });
 });
 
@@ -262,7 +463,8 @@ leadCaptureForm.addEventListener("submit", (event) => {
   const formData = new FormData(leadCaptureForm);
   const recapConsent = formData.has("recap");
   const transcriptConsent = formData.has("transcript");
-  if (!recapConsent && !transcriptConsent) {
+  const transcriptEmailConsent = formData.has("transcript-email");
+  if (!recapConsent && !transcriptConsent && !transcriptEmailConsent) {
     leadCaptureStatus.textContent = "Choose at least one sharing option.";
     return;
   }
@@ -278,12 +480,9 @@ leadCaptureForm.addEventListener("submit", (event) => {
     email: formData.get("email"),
     recapConsent,
     transcriptConsent,
+    transcriptEmailConsent,
   });
 });
 
-renderBrief();
+setupSignalField();
 setTheme(localStorage.getItem("motion-falcon-theme") || "dark");
-setInterval(() => {
-  briefIndex += 1;
-  renderBrief();
-}, 9000);
