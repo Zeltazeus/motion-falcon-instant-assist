@@ -101,6 +101,28 @@ combined content once when it starts and keeps it in memory for the session. Dep
 then restart or redeploy the bot after changing either document. Never put private strategy,
 credentials, or client data in `client/public`.
 
+## Portfolio Viewer
+
+The voice assistant opens the portfolio when a visitor asks to see Motion Falcon's work.
+Portfolio content is managed in `client/public/portfolio/manifest.json`; media files are
+served directly from the client's public directory.
+
+- Put active or recent project images in `client/public/portfolio/current-work/` and broader
+   gallery images in `client/public/portfolio/images/`.
+- In `currentWork`, set each entry's `src` to `/portfolio/current-work/<filename>`; in `images`,
+   use `/portfolio/images/<filename>`. Encode spaces in `src` as `%20`. Include `title` and
+   descriptive `alt` text. `description` is optional.
+- Add video entries to `videos` with a YouTube `url`. `title` and `description` are optional;
+   untitled entries appear as `Video 1`, `Video 2`, and so on. Supported URLs are YouTube watch
+   links, `youtu.be` short links, and YouTube Shorts links. Playback is
+   loaded from YouTube's privacy-enhanced embed host only after the visitor selects a video.
+- Keep unused sections as empty arrays. The viewer intentionally shows an empty state until
+   real work is added.
+
+The manifest has three required arrays: `currentWork` and `images` contain image entries
+(`src`, `title`, `alt`, optional `description`); `videos` contains entries with `url` and
+optional `title` and `description`.
+
 ## Building with an AI coding agent
 
 Extending this bot with Claude Code, Codex, or another AI coding assistant? Give it live, accurate Pipecat context instead of stale training data with the **Pipecat Context Hub** — a local index of Pipecat docs, examples, and API source your agent queries over MCP:

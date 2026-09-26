@@ -1,5 +1,6 @@
 import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { SmallWebRTCTransport } from "@pipecat-ai/small-webrtc-transport";
+import { getYouTubeVideoId, normalizePortfolioManifest, normalizePortfolioSection } from "./portfolio.js";
 
 const LOCAL_BOT_URL = "http://localhost:7860/api/offer";
 const CLOUD_API_URL = import.meta.env.VITE_PCC_API_URL || "https://api.pipecat.daily.co/v1/public";
@@ -16,6 +17,13 @@ const themeToggle = document.getElementById("theme-toggle");
 const themeIcon = themeToggle.querySelector(".theme-icon");
 const leadCaptureDialog = document.getElementById("lead-capture-dialog");
 const schedulingDialog = document.getElementById("scheduling-dialog");
+const portfolioDialog = document.getElementById("portfolio-dialog");
+const portfolioTabs = [...document.querySelectorAll("[data-portfolio-section]")];
+const portfolioPanels = {
+  "current-work": document.getElementById("portfolio-panel-current-work"),
+  images: document.getElementById("portfolio-panel-images"),
+  videos: document.getElementById("portfolio-panel-videos"),
+};
 const leadCaptureForm = document.getElementById("lead-capture-form");
 const leadCaptureStatus = document.getElementById("lead-capture-status");
 const meetingScheduledState = document.getElementById("meeting-scheduled-state");
@@ -29,14 +37,15 @@ let client;
 
 let orbState = "idle";
 let dialogTrigger;
+let portfolioDialogTrigger;
+let portfolioSection = "current-work";
+let portfolioManifest;
+let portfolioManifestPromise;
+let portfolioLoadState = "idle";
+const portfolioIndexes = { "current-work": 0, images: 0 };
 let calendlyWidgetPromise;
 let signalIntensity = 0.32;
 let redrawSignalField = () => {};
-
-function setupSignalField() {
-  const context = signalCanvas?.getContext("2d");
-  if (!studioBoard || !signalCanvas || !context) return;
-
 
 function renderLiveNotes(payload) {
   if (!liveNotesList) return;
@@ -57,6 +66,11 @@ function renderLiveNotes(payload) {
   if (!notes.length) items[0].classList.add("is-placeholder");
   liveNotesList.replaceChildren(...items);
 }
+
+function setupSignalField() {
+  const context = signalCanvas?.getContext("2d");
+  if (!studioBoard || !signalCanvas || !context) return;
+
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const palette = [
     { line: "rgba(255, 177, 96, 0.46)", fill: "rgba(255, 151, 82, 0.055)" },
@@ -198,6 +212,222 @@ function openDialog(dialog, trigger) {
 function closeDialog(dialog) {
   if (dialog.open) dialog.close();
   dialogTrigger?.focus();
+}
+
+function setPortfolioStatus(panel, message, retry = false) {
+  panel.replaceChildren();
+  const statusMessage = document.createElement("p");
+  statusMessage.className = "portfolio-state";
+  statusMessage.setAttribute("role", "status");
+  statusMessage.setAttribute("aria-live", "polite");
+  statusMessage.textContent = message;
+  panel.append(statusMessage);
+
+  if (retry) {
+    const retryButton = document.createElement("button");
+    retryButton.className = "portfolio-retry";
+    retryButton.type = "button";
+    retryButton.textContent = "Try again";
+    retryButton.addEventListener("click", async () => {
+      try {
+        await loadPortfolioManifest(true);
+      } catch {
+        // The error state is rendered after the failed request.
+      }
+      renderPortfolioSection();
+    });
+    panel.append(retryButton);
+  }
+}
+
+function renderPortfolioCarousel(section) {
+  const panel = portfolioPanels[section];
+  const items = portfolioManifest[section === "current-work" ? "currentWork" : "images"];
+  if (!items.length) {
+    setPortfolioStatus(
+      panel,
+      section === "current-work"
+        ? "There is no current work published yet. Please check back soon."
+        : "There are no images published yet. Please check back soon.",
+    );
+    return;
+  }
+
+  const index = portfolioIndexes[section] % items.length;
+  const item = items[index];
+  const figure = document.createElement("figure");
+  figure.className = "portfolio-figure";
+  const image = document.createElement("img");
+  image.className = "portfolio-image";
+  image.src = item.src;
+  image.alt = item.alt;
+  image.loading = "lazy";
+  figure.append(image);
+
+  const caption = document.createElement("figcaption");
+  caption.className = "portfolio-caption";
+  const title = document.createElement("h3");
+  title.textContent = item.title;
+  caption.append(title);
+  if (item.description) {
+    const description = document.createElement("p");
+    description.textContent = item.description;
+    caption.append(description);
+  }
+
+  const controls = document.createElement("div");
+  controls.className = "portfolio-carousel-controls";
+  const previous = document.createElement("button");
+  previous.className = "portfolio-arrow";
+  previous.type = "button";
+  previous.setAttribute("aria-label", "Previous item");
+  previous.textContent = "\u2190";
+  previous.disabled = items.length < 2;
+  previous.addEventListener("click", () => {
+    portfolioIndexes[section] = (index - 1 + items.length) % items.length;
+    renderPortfolioCarousel(section);
+  });
+  const counter = document.createElement("span");
+  counter.className = "portfolio-counter";
+  counter.setAttribute("aria-live", "polite");
+  counter.textContent = `${index + 1} / ${items.length}`;
+  const next = document.createElement("button");
+  next.className = "portfolio-arrow";
+  next.type = "button";
+  next.setAttribute("aria-label", "Next item");
+  next.textContent = "\u2192";
+  next.disabled = items.length < 2;
+  next.addEventListener("click", () => {
+    portfolioIndexes[section] = (index + 1) % items.length;
+    renderPortfolioCarousel(section);
+  });
+  controls.append(previous, counter, next);
+
+  const content = document.createElement("div");
+  content.className = "portfolio-carousel";
+  content.append(figure, caption, controls);
+  panel.replaceChildren(content);
+}
+
+function renderPortfolioVideos() {
+  const panel = portfolioPanels.videos;
+  if (!portfolioManifest.videos.length) {
+    setPortfolioStatus(panel, "There are no videos published yet. Please check back soon.");
+    return;
+  }
+
+  const list = document.createElement("ul");
+  list.className = "portfolio-video-list";
+  for (const video of portfolioManifest.videos) {
+    const item = document.createElement("li");
+    item.className = "portfolio-video-item";
+    const preview = document.createElement("div");
+    preview.className = "portfolio-video-preview";
+    const thumbnail = document.createElement("img");
+    thumbnail.src = `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`;
+    thumbnail.alt = `${video.title} video thumbnail`;
+    thumbnail.loading = "lazy";
+    thumbnail.addEventListener("error", () => thumbnail.remove(), { once: true });
+    const play = document.createElement("button");
+    play.className = "portfolio-play";
+    play.type = "button";
+    play.setAttribute("aria-label", `Play ${video.title}`);
+    play.textContent = "\u25b6";
+    play.addEventListener("click", () => {
+      const frame = document.createElement("iframe");
+      frame.className = "portfolio-video-frame";
+      frame.src = `https://www.youtube-nocookie.com/embed/${video.videoId}?rel=0&playsinline=1`;
+      frame.title = video.title;
+      frame.allow = "encrypted-media; picture-in-picture; web-share";
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.allowFullscreen = true;
+      preview.replaceChildren(frame);
+    }, { once: true });
+    preview.append(thumbnail, play);
+
+    const details = document.createElement("div");
+    details.className = "portfolio-video-details";
+    const title = document.createElement("h3");
+    title.textContent = video.title;
+    details.append(title);
+    if (video.description) {
+      const description = document.createElement("p");
+      description.textContent = video.description;
+      details.append(description);
+    }
+    item.append(preview, details);
+    list.append(item);
+  }
+  panel.replaceChildren(list);
+}
+
+function renderPortfolioSection() {
+  const panel = portfolioPanels[portfolioSection];
+  if (portfolioLoadState === "loading" || portfolioLoadState === "idle") {
+    setPortfolioStatus(panel, "Loading the portfolio...");
+    return;
+  }
+  if (portfolioLoadState === "error") {
+    setPortfolioStatus(panel, "The portfolio could not be loaded.", true);
+    return;
+  }
+  if (portfolioSection === "videos") renderPortfolioVideos();
+  else renderPortfolioCarousel(portfolioSection);
+}
+
+function selectPortfolioSection(section, focusTab = false) {
+  portfolioSection = normalizePortfolioSection(section);
+  portfolioTabs.forEach((tab) => {
+    const selected = tab.dataset.portfolioSection === portfolioSection;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    if (selected && focusTab) tab.focus();
+  });
+  Object.entries(portfolioPanels).forEach(([key, panel]) => {
+    panel.hidden = key !== portfolioSection;
+  });
+  if (portfolioSection !== "videos") portfolioPanels.videos.replaceChildren();
+  renderPortfolioSection();
+}
+
+function loadPortfolioManifest(force = false) {
+  if (portfolioManifest) return Promise.resolve(portfolioManifest);
+  if (portfolioManifestPromise && !force) return portfolioManifestPromise;
+
+  portfolioLoadState = "loading";
+  renderPortfolioSection();
+  portfolioManifestPromise = fetch("/portfolio/manifest.json")
+    .then((response) => {
+      if (!response.ok) throw new Error(`Portfolio request failed (${response.status})`);
+      return response.json();
+    })
+    .then((data) => {
+      portfolioManifest = normalizePortfolioManifest(data);
+      portfolioLoadState = "ready";
+      return portfolioManifest;
+    })
+    .catch((error) => {
+      portfolioManifestPromise = undefined;
+      portfolioLoadState = "error";
+      throw error;
+    });
+  return portfolioManifestPromise;
+}
+
+async function openPortfolio(section, trigger) {
+  if (!portfolioDialog.open) portfolioDialogTrigger = trigger || document.activeElement;
+  openDialog(portfolioDialog, portfolioDialogTrigger);
+  selectPortfolioSection(section);
+  try {
+    await loadPortfolioManifest();
+  } catch {
+    // Keep the retryable error state in the selected panel.
+  }
+  if (portfolioDialog.open) renderPortfolioSection();
+}
+
+function stopPortfolioVideos() {
+  portfolioPanels.videos.querySelectorAll("iframe").forEach((frame) => frame.remove());
 }
 
 function confirmMilestone(indicator, state, message) {
@@ -364,6 +594,7 @@ async function connect() {
       if (command === "update-live-notes") renderLiveNotes(payload);
       if (command === "open-lead-capture") openDialog(leadCaptureDialog);
       if (command === "open-scheduling") openScheduling(payload);
+      if (command === "open-portfolio") openPortfolio(payload?.section);
       if (command === "lead-capture-confirmed") {
         openLeadCaptureButton.classList.add("is-confirmed");
         leadCaptureStatus.textContent = "Your details were received. Opening scheduling.";
@@ -446,7 +677,26 @@ document.querySelectorAll("[data-close-dialog]").forEach((button) => {
   button.addEventListener("click", () => closeDialog(document.getElementById(button.dataset.closeDialog)));
 });
 
-[leadCaptureDialog, schedulingDialog].forEach((dialog) => {
+portfolioTabs.forEach((tab) => {
+  tab.addEventListener("click", () => selectPortfolioSection(tab.dataset.portfolioSection));
+  tab.addEventListener("keydown", (event) => {
+    const currentIndex = portfolioTabs.indexOf(tab);
+    const nextIndex = event.key === "ArrowRight"
+      ? (currentIndex + 1) % portfolioTabs.length
+      : event.key === "ArrowLeft"
+        ? (currentIndex - 1 + portfolioTabs.length) % portfolioTabs.length
+        : event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? portfolioTabs.length - 1
+            : -1;
+    if (nextIndex < 0) return;
+    event.preventDefault();
+    selectPortfolioSection(portfolioTabs[nextIndex].dataset.portfolioSection, true);
+  });
+});
+
+[leadCaptureDialog, schedulingDialog, portfolioDialog].forEach((dialog) => {
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) closeDialog(dialog);
   });
@@ -454,6 +704,11 @@ document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     if (dialog === schedulingDialog) {
       calendlyEmbed.replaceChildren();
       schedulingStatus.textContent = "";
+    }
+    if (dialog === portfolioDialog) {
+      stopPortfolioVideos();
+      portfolioDialogTrigger?.focus();
+      portfolioDialogTrigger = undefined;
     }
   });
 });

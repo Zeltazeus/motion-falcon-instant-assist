@@ -66,6 +66,23 @@
         <p id="scheduling-status" class="form-status" aria-live="polite"></p>
         <a id="calendly-fallback" class="text-command" target="_blank" rel="noopener">Open scheduling in a new tab</a>
       </dialog>
+      <dialog id="portfolio-dialog" class="portfolio-dialog" aria-labelledby="portfolio-title">
+        <div class="dialog-heading">
+          <div>
+            <span class="portfolio-kicker">MOTION FALCON / SELECTED WORK</span>
+            <h2 id="portfolio-title">Portfolio</h2>
+          </div>
+          <button class="dialog-close" type="button" data-close-dialog="portfolio-dialog" aria-label="Close portfolio"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="portfolio-tabs" role="tablist" aria-label="Portfolio sections">
+          <button id="portfolio-tab-current-work" class="portfolio-tab" type="button" role="tab" aria-controls="portfolio-panel-current-work" aria-selected="true" tabindex="0" data-portfolio-section="current-work">Current Work</button>
+          <button id="portfolio-tab-images" class="portfolio-tab" type="button" role="tab" aria-controls="portfolio-panel-images" aria-selected="false" tabindex="-1" data-portfolio-section="images">Images</button>
+          <button id="portfolio-tab-videos" class="portfolio-tab" type="button" role="tab" aria-controls="portfolio-panel-videos" aria-selected="false" tabindex="-1" data-portfolio-section="videos">Videos</button>
+        </div>
+        <section id="portfolio-panel-current-work" class="portfolio-panel" role="tabpanel" aria-labelledby="portfolio-tab-current-work" tabindex="0"></section>
+        <section id="portfolio-panel-images" class="portfolio-panel" role="tabpanel" aria-labelledby="portfolio-tab-images" tabindex="0" hidden></section>
+        <section id="portfolio-panel-videos" class="portfolio-panel" role="tabpanel" aria-labelledby="portfolio-tab-videos" tabindex="0" hidden></section>
+      </dialog>
       <audio id="bot-audio" autoplay playsinline aria-hidden="true"></audio>
     </main>
 

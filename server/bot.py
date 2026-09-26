@@ -113,7 +113,9 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
                 "pointers capturing the current goals, constraints, decisions, or next steps. "
                 "Update the full current set as the conversation evolves. Live Notes are not a "
                 "transcript: never include verbatim user or assistant wording, and do not "
-                "transcribe every word."
+                "transcribe every word. When the visitor asks to see Motion Falcon's work, "
+                "portfolio, images, or videos, call show_portfolio with the matching section; "
+                "use Current Work when no section is specified. Do not open it unless asked."
             ),
         ),
     )
@@ -133,6 +135,19 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
             )
         )
         return {"status": "The scheduling window is open."}
+
+    async def show_portfolio(
+        params: FunctionCallParams, section: str = "current_work"
+    ) -> dict[str, str]:
+        """Show Motion Falcon's current work, image gallery, or videos.
+
+        Args:
+            section: Requested section: current work, images, or videos. Defaults to current work.
+        """
+        await params.pipeline_worker.queue_frame(
+            RTVIUICommandFrame(command="open-portfolio", payload={"section": section})
+        )
+        return {"status": "The portfolio is open."}
 
     async def update_live_notes(params: FunctionCallParams, notes: list[str]) -> dict[str, str]:
         """Replace the concise conversation pointers shown in Live Notes.
@@ -154,7 +169,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
         )
         return {"status": "Live Notes updated."}
 
-    context = LLMContext(tools=[open_lead_capture, open_scheduling, update_live_notes])
+    context = LLMContext(tools=[open_lead_capture, open_scheduling, show_portfolio, update_live_notes])
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
