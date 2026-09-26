@@ -8,21 +8,43 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="brand-header">
-        <a class="brand" href="./" aria-label="Motion Falcon Instant Assist home"><span class="brand-mark"><img src="/motion-falcon-logo.png" alt="" /></span><span class="brand-copy"><strong>Motion Falcon</strong><span>Instant Assist</span></span></a>
-        <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light mode" title="Toggle theme"><span aria-hidden="true" class="theme-icon">&#9788;</span></button>
-      </header>
       <section class="hero" aria-labelledby="welcome-title">
-        <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span id="session-label">READY WHEN YOU ARE</span></div>
-        <h1 id="welcome-title">Speak to our amazing Assistant</h1>
-        <p class="hero-copy">Would you like one for Your Website</p>
-        <p class="hero-tagline">We Build. We Train. We Deploy.</p>
-        <div class="orb-wrap"><div class="orb-halo halo-one" aria-hidden="true"></div><div class="orb-halo halo-two" aria-hidden="true"></div><button id="connect" class="orb orb-idle" type="button" aria-describedby="status"><span class="orb-core"><span class="orb-glyph" aria-hidden="true"></span><span id="orb-label">Start assist</span></span></button></div>
-        <div id="status" class="status" aria-live="polite">Tap to start a private voice session</div>
-        <button id="open-lead-capture" class="text-command" type="button">Project enquiry</button>
+        <header class="brand-header">
+          <a class="brand" href="./" aria-label="Motion Falcon Instant Assist home"><span class="brand-mark"><img src="/motion-falcon-logo.png" alt="" /></span><span class="brand-copy"><strong>Motion Falcon</strong><span>Instant Assist</span></span></a>
+        </header>
+        <div class="hero-message">
+          <h1 id="welcome-title">Speak to our WebRep</h1>
+          <p class="hero-copy">Explore whether we're the right fit.</p>
+        </div>
+        <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light mode" title="Toggle theme"><span aria-hidden="true" class="theme-icon">&#9788;</span></button>
+      </section>
+      <section class="studio-board" aria-label="Motion Falcon project assistant">
+        <section class="insights" aria-labelledby="insights-title"><div class="section-heading"><h2 id="insights-title">Live brief</h2><span class="pulse-line" aria-hidden="true"></span></div><div id="insight-grid" class="insight-grid"></div></section>
+        <section class="assistant-stage" aria-label="Voice assistant">
+          <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span id="session-label">READY WHEN YOU ARE</span></div>
+          <div class="orb-wrap"><div class="orb-halo halo-one" aria-hidden="true"></div><div class="orb-halo halo-two" aria-hidden="true"></div><button id="connect" class="orb orb-idle" type="button" aria-describedby="status"><span class="orb-core"><span class="orb-glyph" aria-hidden="true"></span><span id="orb-label">Talk to us</span></span></button></div>
+          <div id="status" class="status" aria-live="polite">Start a voice conversation about your project</div>
+        </section>
+        <section class="milestone-panel" aria-labelledby="milestone-title">
+          <div class="section-heading"><h2 id="milestone-title">Conversation milestones</h2><span class="pulse-line" aria-hidden="true"></span></div>
+          <div class="milestone-list">
+            <div id="email-captured-indicator" class="milestone-indicator is-idle" role="status" aria-live="polite" aria-atomic="true">
+              <span class="milestone-lamp" aria-hidden="true"></span>
+              <span class="milestone-copy"><strong>Email Shared</strong><span id="email-captured-state"></span></span>
+            </div>
+            <div id="meeting-scheduled-indicator" class="milestone-indicator is-idle" role="status" aria-live="polite" aria-atomic="true">
+              <span class="milestone-lamp" aria-hidden="true"></span>
+              <span class="milestone-copy"><strong>Meeting scheduled</strong><span id="meeting-scheduled-state"></span></span>
+            </div>
+          </div>
+        </section>
+      </section>
+      <section class="project-action" aria-label="Acceptable conversation outcomes">
+        <div><span class="action-kicker">A clear outcome, on your terms</span><p>Explore whether we're a fit, agree on one practical next step, or leave it here. No commitment beyond this conversation.</p></div>
+        <button id="open-lead-capture" class="text-command" type="button"><span class="action-led" aria-hidden="true"></span><span>Bring a challenge</span></button>
       </section>
       <dialog id="lead-capture-dialog" class="lead-dialog" aria-labelledby="lead-capture-title">
-        <div class="dialog-heading"><h2 id="lead-capture-title">Project enquiry</h2><button class="dialog-close" type="button" data-close-dialog="lead-capture-dialog" aria-label="Close project enquiry">x</button></div>
+        <div class="dialog-heading"><h2 id="lead-capture-title">Project enquiry</h2><button class="dialog-close" type="button" data-close-dialog="lead-capture-dialog" aria-label="Close project enquiry"><span aria-hidden="true">&times;</span></button></div>
         <form id="lead-capture-form" class="lead-form">
           <label>Name<input id="lead-name" name="name" type="text" autocomplete="name" required /></label>
           <label>Email<input id="lead-email" name="email" type="email" autocomplete="email" required /></label>
@@ -34,11 +56,10 @@
         <p id="lead-capture-status" class="form-status" aria-live="polite"></p>
       </dialog>
       <dialog id="scheduling-dialog" class="scheduling-dialog" aria-labelledby="scheduling-title">
-        <div class="dialog-heading"><h2 id="scheduling-title">Choose a time</h2><button class="dialog-close" type="button" data-close-dialog="scheduling-dialog" aria-label="Close scheduling">x</button></div>
+        <div class="dialog-heading"><h2 id="scheduling-title">Choose a time</h2><button class="dialog-close" type="button" data-close-dialog="scheduling-dialog" aria-label="Close scheduling"><span aria-hidden="true">&times;</span></button></div>
         <iframe id="calendly-frame" title="Motion Falcon scheduling" referrerpolicy="strict-origin-when-cross-origin"></iframe>
         <a id="calendly-fallback" class="text-command" target="_blank" rel="noopener">Open scheduling in a new tab</a>
       </dialog>
-      <section class="insights" aria-labelledby="insights-title"><div class="section-heading"><h2 id="insights-title">Live brief</h2><span class="pulse-line" aria-hidden="true"></span></div><div id="insight-grid" class="insight-grid"></div></section>
       <audio id="bot-audio" autoplay playsinline aria-hidden="true"></audio>
     </main>
 

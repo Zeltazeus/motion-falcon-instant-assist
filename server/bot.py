@@ -23,6 +23,7 @@ Run the bot using::
 import os
 from pathlib import Path
 
+import aiohttp
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from loguru import logger
@@ -223,13 +224,15 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
             lead = LeadCapture.from_payload(payload)
             transcript = transcript_for_hubspot() if lead.transcript_consent else ""
             await lead_delivery.deliver(lead, transcript)
+            await worker.queue_frame(RTVIUICommandFrame(command="lead-capture-confirmed"))
             await worker.queue_frame(
                 RTVIUICommandFrame(
                     command="open-scheduling", payload={"url": _get_setting("CALENDLY_URL")}
                 )
             )
-        except (RuntimeError, ValueError) as error:
+        except (RuntimeError, ValueError, aiohttp.ClientError, TimeoutError) as error:
             logger.warning(f"Lead capture was not delivered: {error}")
+            await worker.queue_frame(RTVIUICommandFrame(command="lead-capture-failed"))
 
     @worker.rtvi.event_handler("on_ui_message")
     async def on_ui_message(rtvi, message):

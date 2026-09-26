@@ -17,6 +17,10 @@ const leadCaptureDialog = document.getElementById("lead-capture-dialog");
 const schedulingDialog = document.getElementById("scheduling-dialog");
 const leadCaptureForm = document.getElementById("lead-capture-form");
 const leadCaptureStatus = document.getElementById("lead-capture-status");
+const emailCapturedState = document.getElementById("email-captured-state");
+const meetingScheduledState = document.getElementById("meeting-scheduled-state");
+const emailCapturedIndicator = document.getElementById("email-captured-indicator");
+const meetingScheduledIndicator = document.getElementById("meeting-scheduled-indicator");
 const calendlyFrame = document.getElementById("calendly-frame");
 const calendlyFallback = document.getElementById("calendly-fallback");
 const openLeadCaptureButton = document.getElementById("open-lead-capture");
@@ -43,6 +47,12 @@ function closeDialog(dialog) {
   dialogTrigger?.focus();
 }
 
+function confirmMilestone(indicator, state, message) {
+  indicator.classList.remove("is-idle");
+  indicator.classList.add("is-confirmed");
+  state.textContent = message;
+}
+
 function openScheduling(payload) {
   const calendlyUrl = payload?.url;
   if (typeof calendlyUrl !== "string" || !/^https:\/\/(?:[^/]+\.)?calendly\.com\//.test(calendlyUrl)) return;
@@ -64,7 +74,7 @@ function setStatus(message, state = orbState) {
   orbState = state;
   status.textContent = message;
   connectButton.className = `orb orb-${state}`;
-  orbLabel.textContent = state === "idle" || state === "error" ? "Start assist" : "End session";
+  orbLabel.textContent = state === "idle" || state === "error" ? "Talk to us" : "End session";
   sessionLabel.textContent = state === "idle" ? "READY WHEN YOU ARE" : state === "connecting" ? "OPENING A SECURE LINE" : state === "speaking" ? "FALCON IS RESPONDING" : "LISTENING LIVE";
 }
 
@@ -162,10 +172,21 @@ async function connect() {
     client.on(RTVIEvent.UICommand, ({ command, payload }) => {
       if (command === "open-lead-capture") openDialog(leadCaptureDialog);
       if (command === "open-scheduling") openScheduling(payload);
+      if (command === "lead-capture-confirmed") {
+        confirmMilestone(emailCapturedIndicator, emailCapturedState, "Details received");
+        openLeadCaptureButton.classList.add("is-confirmed");
+        leadCaptureStatus.textContent = "Your details were received. Opening scheduling.";
+        leadCaptureForm.reset();
+        leadCaptureForm.querySelector('button[type="submit"]').disabled = false;
+      }
+      if (command === "lead-capture-failed") {
+        leadCaptureStatus.textContent = "We couldn't save your details. Please try again.";
+        leadCaptureForm.querySelector('button[type="submit"]').disabled = false;
+      }
     });
 
     client.on(RTVIEvent.Disconnected, () => {
-      setStatus("Tap to start a private voice session", "idle");
+      setStatus("Start a voice conversation about your project", "idle");
       connectButton.textContent = "Connect";
       connectButton.disabled = false;
       teardownUI();
@@ -199,7 +220,7 @@ async function disconnect() {
     connectButton.textContent = "Connect";
     connectButton.disabled = false;
     teardownUI();
-    setStatus("Tap to start a private voice session", "idle");
+    setStatus("Start a voice conversation about your project", "idle");
   }
 }
 
@@ -210,6 +231,12 @@ connectButton.addEventListener("click", async () => {
   }
 
   await connect();
+});
+
+window.addEventListener("message", (event) => {
+  if (event.origin !== "https://calendly.com") return;
+  if (event.data?.event !== "calendly.event_scheduled") return;
+  confirmMilestone(meetingScheduledIndicator, meetingScheduledState, "Booking confirmed");
 });
 
 themeToggle.addEventListener("click", () => {
@@ -243,14 +270,15 @@ leadCaptureForm.addEventListener("submit", (event) => {
     leadCaptureStatus.textContent = "Start a voice session before sharing your enquiry.";
     return;
   }
+  const submitButton = leadCaptureForm.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  leadCaptureStatus.textContent = "Saving your details securely...";
   client.sendUIEvent("lead.capture", {
     name: formData.get("name"),
     email: formData.get("email"),
     recapConsent,
     transcriptConsent,
   });
-  leadCaptureStatus.textContent = "Details shared. Opening scheduling.";
-  leadCaptureForm.reset();
 });
 
 renderBrief();
